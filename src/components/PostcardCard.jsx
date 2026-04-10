@@ -1,5 +1,7 @@
 function PostcardCard({ postcard, onOpen, highlighted = false }) {
   const progress = `${postcard.unlockedPieces}/${postcard.totalPieces} pieces`;
+  const columns = 4;
+  const rows = Math.ceil(postcard.totalPieces / columns);
 
   const handleOpen = () => {
     if (onOpen) onOpen(postcard);
@@ -7,11 +9,24 @@ function PostcardCard({ postcard, onOpen, highlighted = false }) {
 
   return (
     <button className={`postcard-card ${highlighted ? 'highlight' : ''}`} onClick={handleOpen} type="button">
-      <div className="postcard-image" style={{ backgroundImage: `url(${postcard.imageUrl})` }}>
-        <div className="piece-grid" style={{ '--pieces': postcard.totalPieces }}>
+      <div className="postcard-image">
+        <div className="postcard-image-grid" style={{ '--columns': columns, '--rows': rows }}>
           {Array.from({ length: postcard.totalPieces }).map((_, index) => {
-            const unlocked = index < postcard.unlockedPieces;
-            return <span key={index} className={`piece ${unlocked ? 'unlocked' : ''}`} />;
+            const revealed = index < postcard.unlockedPieces;
+            const row = Math.floor(index / columns);
+            const column = index % columns;
+
+            return (
+              <span
+                key={index}
+                className={`piece ${revealed ? 'revealed' : 'hidden'}`}
+                style={{
+                  backgroundImage: revealed ? `url(${postcard.imageUrl})` : 'none',
+                  backgroundSize: `${columns * 100}% ${rows * 100}%`,
+                  backgroundPosition: `${(column / Math.max(columns - 1, 1)) * 100}% ${(row / Math.max(rows - 1, 1)) * 100}%`
+                }}
+              />
+            );
           })}
         </div>
       </div>

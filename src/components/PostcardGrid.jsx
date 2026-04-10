@@ -4,6 +4,7 @@ import PostcardCard from './PostcardCard';
 
 function PostcardGrid({ postcards, highlightedPostcardId }) {
   const [selected, setSelected] = useState(null);
+  const columns = 4;
 
   return (
     <section className="card panel">
@@ -26,16 +27,30 @@ function PostcardGrid({ postcards, highlightedPostcardId }) {
         {selected ? (
           <div className="modal-content">
             <h3>{selected.title}</h3>
-            <div className="modal-postcard" style={{ backgroundImage: `url(${selected.imageUrl})` }}>
-              <div className={`modal-layer ${selected.completed ? 'clear' : ''}`} />
-              {!selected.completed ? (
-                <div className="piece-grid" style={{ '--pieces': selected.totalPieces }}>
-                  {Array.from({ length: selected.totalPieces }).map((_, index) => {
-                    const unlocked = index < selected.unlockedPieces;
-                    return <span key={index} className={`piece ${unlocked ? 'unlocked' : ''}`} />;
-                  })}
-                </div>
-              ) : null}
+            <div className="modal-postcard">
+              <div
+                className="postcard-image-grid"
+                style={{ '--columns': columns, '--rows': Math.ceil(selected.totalPieces / columns) }}
+              >
+                {Array.from({ length: selected.totalPieces }).map((_, index) => {
+                  const revealed = index < selected.unlockedPieces;
+                  const rows = Math.ceil(selected.totalPieces / columns);
+                  const row = Math.floor(index / columns);
+                  const column = index % columns;
+
+                  return (
+                    <span
+                      key={index}
+                      className={`piece ${revealed ? 'revealed' : 'hidden'}`}
+                      style={{
+                        backgroundImage: revealed ? `url(${selected.imageUrl})` : 'none',
+                        backgroundSize: `${columns * 100}% ${rows * 100}%`,
+                        backgroundPosition: `${(column / Math.max(columns - 1, 1)) * 100}% ${(row / Math.max(rows - 1, 1)) * 100}%`
+                      }}
+                    />
+                  );
+                })}
+              </div>
             </div>
             <p>
               {selected.completed
