@@ -4,6 +4,8 @@ function PostcardCard({ postcard, onOpen, highlighted = false }) {
   const rows = Math.ceil(postcard.totalPieces / columns);
   const postcardImage = postcard.image ?? postcard.imageUrl;
 
+  console.log(postcard.image);
+
   const handleOpen = () => {
     if (onOpen) onOpen(postcard);
   };

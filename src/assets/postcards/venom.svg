@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
-  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0f0f10"/><stop offset="100%" stop-color="#2f3240"/></linearGradient></defs>
-  <rect width="1200" height="800" fill="url(#bg)"/>
-  <text x="50%" y="52%" text-anchor="middle" fill="#e5e7eb" font-size="120" font-family="Arial" font-weight="700">VENOM</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-label="Venom themed postcard">
+  <rect width="1200" height="800" fill="#22252d"/>
+  <path d="M250 120 C500 220 700 220 950 120 L900 680 C690 610 510 610 300 680 Z" fill="#0f1116"/>
+  <path d="M420 360 C490 300 560 300 600 360 C640 300 710 300 780 360 C710 450 640 500 600 560 C560 500 490 450 420 360 Z" fill="#f0f2f5"/>
 </svg>
