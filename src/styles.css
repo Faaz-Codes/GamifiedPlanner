@@ -359,6 +359,8 @@ button:hover {
 
 .piece {
   background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   transition: all 0.4s ease;
 }
 
