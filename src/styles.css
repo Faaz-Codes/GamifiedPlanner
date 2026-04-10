@@ -20,22 +20,27 @@ body {
   font-family: system-ui, sans-serif;
   color: #111827;
   background: #f5f5f7;
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 17px;
+  line-height: 1.7;
 }
 
 h1 {
-  font-size: clamp(24px, 2.5vw, 32px);
+  font-size: clamp(26px, 2.8vw, 34px);
   font-weight: 600;
 }
 
 h2 {
-  font-size: clamp(18px, 1.8vw, 22px);
+  font-size: clamp(20px, 2vw, 24px);
 }
 
 p,
-span {
-  font-size: clamp(14px, 1.2vw, 16px);
+span,
+label {
+  font-size: 15.5px;
+}
+
+small {
+  font-size: 14px;
 }
 
 .container {
@@ -67,11 +72,11 @@ span {
   height: 100%;
   background: white;
   border-radius: 20px;
-  padding: clamp(16px, 1.5vw, 24px);
+  padding: 22px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   width: 100%;
   transition: all 0.2s ease;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .card:hover {
@@ -84,46 +89,56 @@ span {
   grid-template-columns: repeat(3, minmax(120px, 1fr));
   gap: 16px;
   flex-shrink: 0;
+  font-size: 16px;
 }
 
-.stat .label {
+.dashboard .label,
+.dashboard-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 14px;
   letter-spacing: 0.04em;
-  color: #6b7280;
+  color: #666;
   text-transform: uppercase;
 }
 
-.stat strong {
-  font-size: 1.4rem;
+.dashboard strong {
+  font-size: 18px;
 }
 
 .progress-block {
   grid-column: span 3;
 }
 
-.progress-meta {
+.progress-meta,
+.progress-text {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
-  color: #6b7280;
+  font-size: 14px;
+  color: #555;
+}
+
+.progress-meta {
+  margin-top: 6px;
+}
+
+.progress-container {
+  margin-top: 10px;
 }
 
 .progress-track,
 .progress-bar {
   width: 100%;
-  height: 8px;
-  background: #eaecf0;
-  border-radius: 10px;
+  height: 12px;
+  background: #e5e5e5;
+  border-radius: 12px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #111, #454545);
-  border-radius: 999px;
-  transition: width 300ms ease-in-out;
+  background: #111;
+  border-radius: 12px;
+  transition: width 0.3s ease;
 }
 
 .main-content {
@@ -150,8 +165,8 @@ select,
 button {
   border: 1px solid #d0d5dd;
   border-radius: 10px;
-  padding: clamp(8px, 1vw, 12px);
-  font-size: 15px;
+  padding: 10px 14px;
+  font-size: 15.5px;
   font-family: inherit;
 }
 
@@ -159,6 +174,7 @@ button {
   cursor: pointer;
   background: #111827;
   color: #fff;
+  font-weight: 500;
   transition: transform 140ms ease-in-out, box-shadow 140ms ease-in-out;
 }
 
@@ -184,6 +200,7 @@ button:hover {
 }
 
 .task-item {
+  font-size: 15.5px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -325,14 +342,14 @@ button:hover {
 
 .postcard-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
 }
 
 .postcard-subtext {
   margin: 4px 0 0;
   color: #666;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .xp-popup {
