@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Dashboard from './components/Dashboard';
 import TaskManager from './components/TaskManager';
 import PostcardGrid from './components/PostcardGrid';
+import Pomodoro from './components/Pomodoro';
 
 const STORAGE_KEY = 'gamifiedPlannerData';
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
@@ -105,6 +106,7 @@ function App() {
   const [state, setState] = useState(initialState);
   const [xpPopup, setXpPopup] = useState(null);
   const [highlightedPostcardId, setHighlightedPostcardId] = useState(null);
+  const [page, setPage] = useState('tasks');
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -210,16 +212,32 @@ function App() {
   return (
     <div className="container">
       <header className="hero">
-        <h1>Gamified Study Planner</h1>
+        <div className="header">
+          <h1>Gamified Study Planner</h1>
+          <div className="nav-buttons">
+            <button className={page === 'tasks' ? 'active' : ''} onClick={() => setPage('tasks')} type="button">
+              Tasks
+            </button>
+            <button className={page === 'pomodoro' ? 'active' : ''} onClick={() => setPage('pomodoro')} type="button">
+              Pomodoro
+            </button>
+          </div>
+        </div>
         <p>Build momentum daily. Earn XP, keep your streak, and reveal postcards one piece at a time.</p>
       </header>
 
-      <Dashboard xp={state.user.xp} level={level} streak={state.user.streak} xpProgress={xpProgress} />
+      {page === 'tasks' && (
+        <>
+          <Dashboard xp={state.user.xp} level={level} streak={state.user.streak} xpProgress={xpProgress} />
 
-      <main className="main-content">
-        <TaskManager tasks={state.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
-        <PostcardGrid postcards={state.postcards} highlightedPostcardId={highlightedPostcardId} />
-      </main>
+          <main className="main-content">
+            <TaskManager tasks={state.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
+            <PostcardGrid postcards={state.postcards} highlightedPostcardId={highlightedPostcardId} />
+          </main>
+        </>
+      )}
+
+      {page === 'pomodoro' && <Pomodoro />}
 
       {xpPopup ? <div className="xp-popup">{xpPopup}</div> : null}
     </div>
