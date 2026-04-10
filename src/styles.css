@@ -4,12 +4,18 @@
   background: #f5f5f7;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
-  margin: 0;
   padding: 0;
   font-family: system-ui, sans-serif;
   color: #111827;
@@ -19,28 +25,35 @@ body {
 .container {
   width: 100%;
   min-height: 100vh;
-  padding: 24px 48px;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(16px, 2vw, 32px);
   box-sizing: border-box;
+  gap: 16px;
 }
 
 .hero {
-  margin-bottom: 24px;
+  flex-shrink: 0;
 }
 
 .hero h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: clamp(20px, 2vw, 28px);
 }
 
 .hero p {
   margin: 10px 0 0;
   color: #6b7280;
+  font-size: clamp(12px, 1vw, 14px);
 }
 
 .card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   background: white;
   border-radius: 20px;
-  padding: 20px;
+  padding: clamp(16px, 1.5vw, 24px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   width: 100%;
   transition: all 0.2s ease;
@@ -55,7 +68,7 @@ body {
   display: grid;
   grid-template-columns: repeat(3, minmax(120px, 1fr));
   gap: 16px;
-  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .stat .label {
@@ -82,11 +95,12 @@ body {
   color: #6b7280;
 }
 
-.progress-track {
+.progress-track,
+.progress-bar {
   width: 100%;
-  height: 10px;
+  height: 8px;
   background: #eaecf0;
-  border-radius: 999px;
+  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -98,10 +112,11 @@ body {
 }
 
 .main-content {
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin-top: 24px;
+  gap: 20px;
+  min-height: 0;
 }
 
 .panel-header h2 {
@@ -119,9 +134,10 @@ input,
 select,
 button {
   border: 1px solid #d0d5dd;
-  border-radius: 12px;
-  padding: 10px 12px;
-  font: inherit;
+  border-radius: 10px;
+  padding: clamp(8px, 1vw, 12px);
+  font-size: clamp(12px, 1vw, 14px);
+  font-family: inherit;
 }
 
 button {
@@ -137,6 +153,9 @@ button:hover {
 }
 
 .task-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   list-style: none;
   padding: 0;
   margin: 0;
@@ -190,20 +209,23 @@ button:hover {
 
 .postcard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 16px;
+  flex: 1;
 }
 
 .postcard-card {
   border: 1px solid #eaecf0;
-  border-radius: 16px;
+  border-radius: 14px;
   overflow: hidden;
   background: #fff;
   padding: 0;
   color: inherit;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .postcard-card:hover {
+  transform: scale(1.03);
   border-color: #c6cbd3;
 }
 
@@ -254,9 +276,10 @@ button:hover {
   text-align: left;
 }
 
-.postcard-meta h3 {
+.postcard-meta h3,
+.postcard-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: clamp(12px, 1vw, 14px);
 }
 
 .postcard-meta p {
@@ -346,10 +369,6 @@ button:hover {
 @media (max-width: 768px) {
   .main-content {
     grid-template-columns: 1fr;
-  }
-
-  .container {
-    padding: 16px;
   }
 
   .dashboard {
