@@ -1,0 +1,22 @@
+function PostcardCard({ postcard, onOpen, highlighted }) {
+  const progress = `${postcard.unlockedPieces}/${postcard.totalPieces} pieces`;
+
+  return (
+    <button className={`postcard-card ${highlighted ? 'highlight' : ''}`} onClick={() => onOpen(postcard)}>
+      <div className="postcard-image" style={{ backgroundImage: `url(${postcard.imageUrl})` }}>
+        <div className="piece-grid" style={{ '--pieces': postcard.totalPieces }}>
+          {Array.from({ length: postcard.totalPieces }).map((_, index) => {
+            const unlocked = index < postcard.unlockedPieces;
+            return <span key={index} className={`piece ${unlocked ? 'unlocked' : ''}`} />;
+          })}
+        </div>
+      </div>
+      <div className="postcard-meta">
+        <h3>{postcard.title}</h3>
+        <p>{progress}</p>
+      </div>
+    </button>
+  );
+}
+
+export default PostcardCard;
