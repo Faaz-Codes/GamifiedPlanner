@@ -337,16 +337,9 @@ button:hover {
   100% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
 }
 
-.postcard-image,
-.modal-postcard {
-  background-size: cover;
-  background-position: center;
-}
-
 .postcard-image {
   position: relative;
   flex: 1;
-  filter: blur(6px);
 }
 
 .modal-postcard {
@@ -354,35 +347,45 @@ button:hover {
   height: 150px;
 }
 
-.piece-grid {
+.postcard-image-grid {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: repeat(var(--pieces), 1fr);
+  grid-template-columns: repeat(var(--columns, 4), 1fr);
+  grid-template-rows: repeat(var(--rows, 2), 1fr);
+  width: 100%;
+  height: 100%;
 }
 
 .piece {
-  backdrop-filter: blur(7px);
-  background: rgba(255, 255, 255, 0.5);
-  border-right: 1px solid rgba(255, 255, 255, 0.35);
-  transition: opacity 260ms ease-in-out;
+  background-size: cover;
+  transition: all 0.4s ease;
 }
 
-.piece.unlocked {
-  opacity: 0;
-  animation: unlockFade 500ms ease-in-out;
+.piece.hidden {
+  background: #e5e5e5;
 }
 
-@keyframes unlockFade {
-  from { opacity: 1; }
-  to { opacity: 0; }
+.piece.revealed {
+  opacity: 1;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .postcard-info {
   padding: 10px;
   text-align: left;
   background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(6px);
 }
 
 .postcard-title {
@@ -448,17 +451,6 @@ button:hover {
 
 .modal-content h3 {
   margin: 0 0 12px;
-}
-
-.modal-layer {
-  position: absolute;
-  inset: 0;
-  backdrop-filter: blur(8px);
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.modal-layer.clear {
-  opacity: 0;
 }
 
 @media (max-width: 940px) {
