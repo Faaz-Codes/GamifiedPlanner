@@ -1,7 +1,7 @@
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   color: #111;
-  background: #f4f5f7;
+  background: #f5f5f7;
 }
 
 * {
@@ -10,13 +10,17 @@
 
 body {
   margin: 0;
+  padding: 0;
+  font-family: system-ui, sans-serif;
   color: #111827;
+  background: #f5f5f7;
 }
 
-.app-shell {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 40px 24px 64px;
+.container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px 48px;
+  box-sizing: border-box;
 }
 
 .hero {
@@ -34,17 +38,24 @@ body {
 }
 
 .card {
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 12px 28px rgba(16, 24, 40, 0.08);
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
 }
 
 .dashboard {
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(3, minmax(120px, 1fr));
   gap: 16px;
-  padding: 22px;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .stat .label {
@@ -86,14 +97,11 @@ body {
   transition: width 300ms ease-in-out;
 }
 
-.content-grid {
+.main-content {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
-  gap: 22px;
-}
-
-.panel {
-  padding: 20px;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
 }
 
 .panel-header h2 {
@@ -182,8 +190,8 @@ button:hover {
 
 .postcard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
 }
 
 .postcard-card {
@@ -322,10 +330,6 @@ button:hover {
 }
 
 @media (max-width: 940px) {
-  .content-grid {
-    grid-template-columns: 1fr;
-  }
-
   .task-form {
     grid-template-columns: 1fr;
   }
@@ -336,5 +340,23 @@ button:hover {
 
   .progress-block {
     grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+
+  .container {
+    padding: 16px;
+  }
+
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-block {
+    grid-column: span 1;
   }
 }

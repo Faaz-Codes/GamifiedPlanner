@@ -208,7 +208,7 @@ function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div className="container">
       <header className="hero">
         <h1>Gamified Study Planner</h1>
         <p>Build momentum daily. Earn XP, keep your streak, and reveal postcards one piece at a time.</p>
@@ -216,7 +216,7 @@ function App() {
 
       <Dashboard xp={state.user.xp} level={level} streak={state.user.streak} xpProgress={xpProgress} />
 
-      <main className="content-grid">
+      <main className="main-content">
         <TaskManager tasks={state.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
         <PostcardGrid postcards={state.postcards} highlightedPostcardId={highlightedPostcardId} />
       </main>
