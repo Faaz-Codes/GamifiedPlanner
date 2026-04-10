@@ -44,7 +44,7 @@ function PostcardGrid({ postcards, highlightedPostcardId }) {
                       key={index}
                       className={`piece ${revealed ? 'revealed' : 'hidden'}`}
                       style={{
-                        backgroundImage: revealed ? `url(${postcardImage})` : 'none',
+                        backgroundImage: `url(${postcardImage})`,
                         backgroundSize: `${columns * 100}% ${rows * 100}%`,
                         backgroundPosition: `${(column / Math.max(columns - 1, 1)) * 100}% ${(row / Math.max(rows - 1, 1)) * 100}%`
                       }}
