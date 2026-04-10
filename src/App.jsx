@@ -4,40 +4,64 @@ import TaskManager from './components/TaskManager';
 import PostcardCard from './components/PostcardCard';
 import CollectionPage from './components/CollectionPage';
 import Pomodoro from './components/Pomodoro';
+import spiderman from './assets/postcards/spiderman.svg';
+import batman from './assets/postcards/batman.svg';
+import venom from './assets/postcards/venom.svg';
+import redbatman from './assets/postcards/redbatman.svg';
 
 const STORAGE_KEY = 'gamifiedPlannerData';
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
 const XP_PER_LEVEL = 100;
 
-const basePostcards = [
+const DEFAULT_POSTCARDS = [
   {
-    id: 'aurora',
-    title: 'Aurora Journey',
-    totalPieces: 4,
-    unlockedPieces: 0,
-    completed: false,
-    imageUrl:
-      'https://images.unsplash.com/photo-1579038773867-044c48829161?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'alps',
-    title: 'Alpine Morning',
-    totalPieces: 6,
-    unlockedPieces: 0,
-    completed: false,
-    imageUrl:
-      'https://images.unsplash.com/photo-1508261305437-4ea70b6f0f94?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'tokyo',
-    title: 'Tokyo Twilight',
+    id: 1,
+    title: 'Spider-Man',
+    image: spiderman,
     totalPieces: 8,
     unlockedPieces: 0,
-    completed: false,
-    imageUrl:
-      'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?auto=format&fit=crop&w=1200&q=80'
+    completed: false
+  },
+  {
+    id: 2,
+    title: 'Batman',
+    image: batman,
+    totalPieces: 8,
+    unlockedPieces: 0,
+    completed: false
+  },
+  {
+    id: 3,
+    title: 'Venom',
+    image: venom,
+    totalPieces: 8,
+    unlockedPieces: 0,
+    completed: false
+  },
+  {
+    id: 4,
+    title: 'Red Batman',
+    image: redbatman,
+    totalPieces: 8,
+    unlockedPieces: 0,
+    completed: false
   }
 ];
+
+const mergePostcardImages = (savedPostcards) => {
+  if (!Array.isArray(savedPostcards) || !savedPostcards.length) return DEFAULT_POSTCARDS;
+
+  return savedPostcards.map((postcard, index) => {
+    const defaultPostcard =
+      DEFAULT_POSTCARDS.find((item) => item.id === postcard.id || item.title === postcard.title) ||
+      DEFAULT_POSTCARDS[index];
+
+    return {
+      ...postcard,
+      image: defaultPostcard?.image ?? postcard.image
+    };
+  });
+};
 
 const getSavedData = () => {
   try {
@@ -117,7 +141,7 @@ function App() {
   });
   const [postcards, setPostcards] = useState(() => {
     const saved = getSavedData();
-    return Array.isArray(saved.postcards) && saved.postcards.length ? saved.postcards : basePostcards;
+    return mergePostcardImages(saved.postcards);
   });
   const [lastCompletedDate, setLastCompletedDate] = useState(() => {
     const saved = getSavedData();
