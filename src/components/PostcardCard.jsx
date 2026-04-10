@@ -11,9 +11,9 @@ function PostcardCard({ postcard, onOpen, highlighted }) {
           })}
         </div>
       </div>
-      <div className="postcard-meta">
+      <div className="postcard-info">
         <h3 className="postcard-title">{postcard.title}</h3>
-        <p>{progress}</p>
+        <p className="postcard-subtext">{progress}</p>
       </div>
     </button>
   );
