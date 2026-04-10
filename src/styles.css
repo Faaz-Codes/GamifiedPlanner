@@ -267,6 +267,40 @@ button:hover {
   color: #b42318;
 }
 
+
+.postcard-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.postcard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.postcard-header h2 {
+  margin: 0;
+}
+
+.postcard-active {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  flex: 1;
+}
+
+.postcard-active .postcard-card {
+  width: 320px;
+  height: 320px;
+}
+
+.collection-page {
+  gap: 16px;
+}
+
 .postcard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
