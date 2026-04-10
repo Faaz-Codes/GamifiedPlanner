@@ -82,7 +82,7 @@ function Pomodoro() {
         </button>
       </div>
 
-      <p>{isBreak ? 'Break Time ☕' : 'Study Time 📚'}</p>
+      <p>{isBreak ? 'Break Time' : 'Study Time'}</p>
     </section>
   );
 }
