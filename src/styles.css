@@ -168,23 +168,34 @@ button:hover {
 }
 
 .task-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  overflow-y: auto;
+  max-height: 100%;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
   list-style: none;
   padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 10px;
+  margin-bottom: 0;
 }
 
 .task-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid #eaecf0;
-  border-radius: 14px;
-  padding: 12px 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f9f9f9;
+  border: 1px solid #eee;
+  width: 100%;
+}
+
+.task-item:hover {
+  background: #f3f3f3;
 }
 
 .task-item.done span {
@@ -192,10 +203,16 @@ button:hover {
   color: #98a2b3;
 }
 
-.task-item label {
+.task-left {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+.task-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .empty-state {

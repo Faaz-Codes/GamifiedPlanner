@@ -14,7 +14,7 @@ function TaskManager({ tasks, onAddTask, onCompleteTask }) {
   };
 
   return (
-    <section className="card panel">
+    <section className="card panel task-container">
       <div className="panel-header">
         <h2>Tasks</h2>
       </div>
@@ -38,7 +38,7 @@ function TaskManager({ tasks, onAddTask, onCompleteTask }) {
         {tasks.length === 0 ? <li className="empty-state">No tasks yet. Add your first study target.</li> : null}
         {tasks.map((task) => (
           <li key={task.id} className={`task-item ${task.completed ? 'done' : ''}`}>
-            <label>
+            <div className="task-left">
               <input
                 type="checkbox"
                 checked={task.completed}
@@ -46,7 +46,7 @@ function TaskManager({ tasks, onAddTask, onCompleteTask }) {
                 disabled={task.completed}
               />
               <span>{task.title}</span>
-            </label>
+            </div>
             <small className={`difficulty ${task.difficulty}`}>{task.difficulty}</small>
           </li>
         ))}
