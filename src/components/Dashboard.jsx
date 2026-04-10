@@ -14,13 +14,13 @@ function Dashboard({ xp, level, streak, xpProgress }) {
         <strong>{streak} day{streak === 1 ? '' : 's'}</strong>
       </div>
 
-      <div className="progress-block">
-        <div className="progress-meta">
+      <div className="progress-block progress-container">
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${xpProgress}%` }} />
+        </div>
+        <div className="progress-meta progress-text">
           <span>Progress to next level</span>
           <span>{xpProgress}/100</span>
-        </div>
-        <div className="progress-track">
-          <div className="progress-fill" style={{ width: `${xpProgress}%` }} />
         </div>
       </div>
     </section>
