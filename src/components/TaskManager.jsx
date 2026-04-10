@@ -37,7 +37,7 @@ function TaskManager({ tasks, onAddTask, onCompleteTask }) {
       <ul className="task-list">
         {tasks.length === 0 ? <li className="empty-state">No tasks yet. Add your first study target.</li> : null}
         {tasks.map((task) => (
-          <li key={task.id} className={`task-item ${task.completed ? 'done' : ''}`}>
+          <li key={task.id} className={`task-item ${task.completed ? 'done' : ''} ${task.isDeleting ? 'fade-out' : ''}`}>
             <div className="task-left">
               <input
                 type="checkbox"

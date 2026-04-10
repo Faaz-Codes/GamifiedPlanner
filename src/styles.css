@@ -213,6 +213,13 @@ button:hover {
   background: #f9f9f9;
   border: 1px solid #eee;
   width: 100%;
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+
+.task-item.fade-out {
+  opacity: 0;
+  transform: translateX(20px) scale(0.95);
 }
 
 .task-item:hover {

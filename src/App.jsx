@@ -120,7 +120,9 @@ function App() {
           streak: parsed?.user?.streak ?? 0,
           lastCompletedDate: parsed?.user?.lastCompletedDate ?? null
         },
-        tasks: Array.isArray(parsed?.tasks) ? parsed.tasks : [],
+        tasks: Array.isArray(parsed?.tasks)
+          ? parsed.tasks.map((task) => ({ ...task, isDeleting: false }))
+          : [],
         postcards:
           Array.isArray(parsed?.postcards) && parsed.postcards.length
             ? parsed.postcards
@@ -155,7 +157,8 @@ function App() {
       id: crypto.randomUUID(),
       title,
       difficulty,
-      completed: false
+      completed: false,
+      isDeleting: false
     };
 
     setState((prev) => ({
@@ -167,7 +170,7 @@ function App() {
   const completeTask = (taskId) => {
     setState((prev) => {
       const task = prev.tasks.find((item) => item.id === taskId);
-      if (!task || task.completed) return prev;
+      if (!task || task.completed || task.isDeleting) return prev;
 
       const gainedXP = calculateXP(task.difficulty);
       const nowIso = new Date().toISOString();
@@ -200,13 +203,21 @@ function App() {
           item.id === taskId
             ? {
                 ...item,
-                completed: true
+                completed: true,
+                isDeleting: true
               }
             : item
         ),
         postcards
       };
     });
+
+    setTimeout(() => {
+      setState((prev) => ({
+        ...prev,
+        tasks: prev.tasks.filter((task) => task.id !== taskId)
+      }));
+    }, 300);
   };
 
   return (
