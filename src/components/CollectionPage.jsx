@@ -1,13 +1,13 @@
 import PostcardCard from './PostcardCard';
 
-function CollectionPage({ postcards, setPage }) {
+function CollectionPage({ postcards, onBack }) {
   const completed = postcards.filter((postcard) => postcard.completed);
 
   return (
     <section className="card panel collection-page">
       <div className="header">
         <h2>Collected Postcards</h2>
-        <button onClick={() => setPage('tasks')} type="button">
+        <button onClick={onBack} type="button">
           Back
         </button>
       </div>
