@@ -39,14 +39,13 @@ const basePostcards = [
   }
 ];
 
-const initialState = {
-  user: {
-    xp: 0,
-    streak: 0,
-    lastCompletedDate: null
-  },
-  tasks: [],
-  postcards: basePostcards
+const getSavedData = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
 };
 
 const calculateXP = (difficulty) => {
@@ -104,40 +103,42 @@ const unlockPostcardPiece = (postcards) => {
 };
 
 function App() {
-  const [state, setState] = useState(initialState);
+  const [tasks, setTasks] = useState(() => {
+    const saved = getSavedData();
+    return Array.isArray(saved.tasks) ? saved.tasks.map((task) => ({ ...task, isDeleting: false })) : [];
+  });
+  const [xp, setXp] = useState(() => {
+    const saved = getSavedData();
+    return saved.xp ?? 0;
+  });
+  const [streak, setStreak] = useState(() => {
+    const saved = getSavedData();
+    return saved.streak ?? 0;
+  });
+  const [postcards, setPostcards] = useState(() => {
+    const saved = getSavedData();
+    return Array.isArray(saved.postcards) && saved.postcards.length ? saved.postcards : basePostcards;
+  });
+  const [lastCompletedDate, setLastCompletedDate] = useState(() => {
+    const saved = getSavedData();
+    return saved.lastCompletedDate ?? null;
+  });
   const [xpPopup, setXpPopup] = useState(null);
   const [highlightedPostcardId, setHighlightedPostcardId] = useState(null);
   const [page, setPage] = useState('tasks');
-  const activePostcard = useMemo(() => state.postcards.find((postcard) => !postcard.completed), [state.postcards]);
+  const activePostcard = useMemo(() => postcards.find((postcard) => !postcard.completed), [postcards]);
 
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
+    const data = {
+      tasks,
+      xp,
+      streak,
+      postcards,
+      lastCompletedDate
+    };
 
-    try {
-      const parsed = JSON.parse(raw);
-      setState({
-        user: {
-          xp: parsed?.user?.xp ?? 0,
-          streak: parsed?.user?.streak ?? 0,
-          lastCompletedDate: parsed?.user?.lastCompletedDate ?? null
-        },
-        tasks: Array.isArray(parsed?.tasks)
-          ? parsed.tasks.map((task) => ({ ...task, isDeleting: false }))
-          : [],
-        postcards:
-          Array.isArray(parsed?.postcards) && parsed.postcards.length
-            ? parsed.postcards
-            : basePostcards
-      });
-    } catch (error) {
-      console.error('Could not parse localStorage data', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [tasks, xp, streak, postcards, lastCompletedDate]);
 
   useEffect(() => {
     if (!xpPopup) return;
@@ -151,8 +152,8 @@ function App() {
     return () => clearTimeout(timeout);
   }, [highlightedPostcardId]);
 
-  const level = useMemo(() => Math.floor(state.user.xp / XP_PER_LEVEL) + 1, [state.user.xp]);
-  const xpProgress = useMemo(() => state.user.xp % XP_PER_LEVEL, [state.user.xp]);
+  const level = useMemo(() => Math.floor(xp / XP_PER_LEVEL) + 1, [xp]);
+  const xpProgress = useMemo(() => xp % XP_PER_LEVEL, [xp]);
 
   const addTask = (title, difficulty) => {
     const task = {
@@ -163,62 +164,51 @@ function App() {
       isDeleting: false
     };
 
-    setState((prev) => ({
-      ...prev,
-      tasks: [task, ...prev.tasks]
-    }));
+    setTasks((prev) => [task, ...prev]);
   };
 
   const completeTask = (taskId) => {
-    setState((prev) => {
-      const task = prev.tasks.find((item) => item.id === taskId);
-      if (!task || task.completed || task.isDeleting) return prev;
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task || task.completed || task.isDeleting) return;
 
-      const gainedXP = calculateXP(task.difficulty);
-      const nowIso = new Date().toISOString();
-      const streakResult = updateStreak(prev.user.lastCompletedDate, nowIso);
+    const gainedXP = calculateXP(task.difficulty);
+    const nowIso = new Date().toISOString();
+    const streakResult = updateStreak(lastCompletedDate, nowIso);
 
-      let nextStreak = prev.user.streak;
-      if (streakResult.streak === 1) nextStreak = 1;
-      if (streakResult.streak === 'increment') nextStreak = prev.user.streak + 1;
+    setXp((prev) => prev + gainedXP);
 
-      let postcards = prev.postcards;
-      let unlockedCardId = null;
+    if (streakResult.streak === 1) {
+      setStreak(1);
+    } else if (streakResult.streak === 'increment') {
+      setStreak((prev) => prev + 1);
+    }
 
-      if (streakResult.unlockedToday) {
-        const unlockResult = unlockPostcardPiece(prev.postcards);
-        postcards = unlockResult.postcards;
-        unlockedCardId = unlockResult.unlockedCardId;
-      }
+    if (streakResult.saveDate) {
+      setLastCompletedDate(nowIso);
+    }
 
-      setXpPopup(`+${gainedXP} XP`);
-      if (unlockedCardId) setHighlightedPostcardId(unlockedCardId);
+    if (streakResult.unlockedToday) {
+      const unlockResult = unlockPostcardPiece(postcards);
+      setPostcards(unlockResult.postcards);
+      if (unlockResult.unlockedCardId) setHighlightedPostcardId(unlockResult.unlockedCardId);
+    }
 
-      return {
-        ...prev,
-        user: {
-          xp: prev.user.xp + gainedXP,
-          streak: nextStreak,
-          lastCompletedDate: streakResult.saveDate ? nowIso : prev.user.lastCompletedDate
-        },
-        tasks: prev.tasks.map((item) =>
-          item.id === taskId
-            ? {
-                ...item,
-                completed: true,
-                isDeleting: true
-              }
-            : item
-        ),
-        postcards
-      };
-    });
+    setXpPopup(`+${gainedXP} XP`);
+
+    setTasks((prev) =>
+      prev.map((item) =>
+        item.id === taskId
+          ? {
+              ...item,
+              completed: true,
+              isDeleting: true
+            }
+          : item
+      )
+    );
 
     setTimeout(() => {
-      setState((prev) => ({
-        ...prev,
-        tasks: prev.tasks.filter((task) => task.id !== taskId)
-      }));
+      setTasks((prev) => prev.filter((savedTask) => savedTask.id !== taskId));
     }, 300);
   };
 
@@ -241,10 +231,10 @@ function App() {
 
       {page === 'tasks' && (
         <>
-          <Dashboard xp={state.user.xp} level={level} streak={state.user.streak} xpProgress={xpProgress} />
+          <Dashboard xp={xp} level={level} streak={streak} xpProgress={xpProgress} />
 
           <main className="main-content">
-            <TaskManager tasks={state.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
+            <TaskManager tasks={tasks} onAddTask={addTask} onCompleteTask={completeTask} />
             <section className="card panel postcard-section">
               <div className="postcard-header">
                 <h2>Postcards</h2>
@@ -258,24 +248,30 @@ function App() {
                   <PostcardCard
                     postcard={activePostcard}
                     highlighted={highlightedPostcardId === activePostcard.id}
+                    showLarge
                   />
                 </div>
               ) : (
-                <p className="empty-state">All postcards completed 🎉</p>
+                <p className="empty-state">You have completed all postcards. Amazing consistency!</p>
               )}
             </section>
           </main>
         </>
       )}
 
-      {page === 'pomodoro' && <Pomodoro />}
+      {page === 'collection' && (
+        <CollectionPage
+          postcards={postcards}
+          onBack={() => setPage('tasks')}
+          highlightedPostcardId={highlightedPostcardId}
+        />
+      )}
 
-      {page === 'collection' && <CollectionPage postcards={state.postcards} setPage={setPage} />}
+      {page === 'pomodoro' && <Pomodoro onBack={() => setPage('tasks')} />}
 
-      {xpPopup ? <div className="xp-popup">{xpPopup}</div> : null}
+      {xpPopup && <div className="xp-popup">{xpPopup}</div>}
     </div>
   );
 }
 
 export default App;
-export { calculateXP, updateStreak, unlockPostcardPiece };
