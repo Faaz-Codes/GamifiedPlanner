@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Dashboard from './components/Dashboard';
 import TaskManager from './components/TaskManager';
-import PostcardGrid from './components/PostcardGrid';
+import PostcardCard from './components/PostcardCard';
+import CollectionPage from './components/CollectionPage';
 import Pomodoro from './components/Pomodoro';
 
 const STORAGE_KEY = 'gamifiedPlannerData';
@@ -107,6 +108,7 @@ function App() {
   const [xpPopup, setXpPopup] = useState(null);
   const [highlightedPostcardId, setHighlightedPostcardId] = useState(null);
   const [page, setPage] = useState('tasks');
+  const activePostcard = useMemo(() => state.postcards.find((postcard) => !postcard.completed), [state.postcards]);
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -243,12 +245,32 @@ function App() {
 
           <main className="main-content">
             <TaskManager tasks={state.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
-            <PostcardGrid postcards={state.postcards} highlightedPostcardId={highlightedPostcardId} />
+            <section className="card panel postcard-section">
+              <div className="postcard-header">
+                <h2>Postcards</h2>
+                <button onClick={() => setPage('collection')} type="button">
+                  View Collection
+                </button>
+              </div>
+
+              {activePostcard ? (
+                <div className="postcard-active">
+                  <PostcardCard
+                    postcard={activePostcard}
+                    highlighted={highlightedPostcardId === activePostcard.id}
+                  />
+                </div>
+              ) : (
+                <p className="empty-state">All postcards completed 🎉</p>
+              )}
+            </section>
           </main>
         </>
       )}
 
       {page === 'pomodoro' && <Pomodoro />}
+
+      {page === 'collection' && <CollectionPage postcards={state.postcards} setPage={setPage} />}
 
       {xpPopup ? <div className="xp-popup">{xpPopup}</div> : null}
     </div>
