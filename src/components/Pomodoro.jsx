@@ -19,7 +19,7 @@ function Pomodoro() {
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev === 0) {
+        if (prev <= 1) {
           let nextSeconds = duration * 60;
 
           setIsBreak((prevIsBreak) => {
@@ -62,6 +62,7 @@ function Pomodoro() {
             className={duration === value ? 'active-option' : ''}
             onClick={() => handleDurationChange(value)}
             type="button"
+            disabled={isRunning}
           >
             {value} min
           </button>
@@ -71,10 +72,10 @@ function Pomodoro() {
       <div className="timer">{formatTime(timeLeft)}</div>
 
       <div className="controls">
-        <button onClick={() => setIsRunning(true)} type="button">
+        <button onClick={() => setIsRunning(true)} type="button" disabled={isRunning}>
           Start
         </button>
-        <button onClick={() => setIsRunning(false)} type="button">
+        <button onClick={() => setIsRunning(false)} type="button" disabled={!isRunning}>
           Pause
         </button>
         <button onClick={resetTimer} type="button">

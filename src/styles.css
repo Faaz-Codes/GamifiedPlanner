@@ -351,6 +351,11 @@ button.nav-btn.active {
   justify-content: flex-start;
 }
 
+button.postcard-card {
+  padding: 0;
+  text-align: inherit;
+}
+
 .postcard-card:hover {
   transform: scale(1.05);
 }
@@ -389,8 +394,8 @@ button.nav-btn.active {
 
 .postcard-image-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+  grid-template-columns: repeat(var(--columns, 4), 1fr);
+  grid-template-rows: repeat(var(--rows, 2), 1fr);
   width: 100%;
   height: 260px;
   border-radius: 16px;
@@ -411,8 +416,7 @@ button.nav-btn.active {
 }
 
 .piece.revealed {
-  background-size: cover;
-  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .postcard-info {
@@ -468,6 +472,7 @@ button.nav-btn.active {
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
   overflow: hidden;
+  padding: 20px;
 }
 
 .modal-header {
@@ -494,6 +499,10 @@ button.nav-btn.active {
 
 .modal-content h3 {
   margin-top: 0;
+}
+
+.modal-close {
+  float: right;
 }
 
 .collection-grid {
@@ -604,6 +613,11 @@ button.nav-btn.active {
   border-color: transparent;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .timer {
   font-size: 48px;
   font-weight: 700;
@@ -633,5 +647,36 @@ button.nav-btn.active {
 
   .dashboard {
     grid-template-columns: 1fr;
+  }
+
+  .header,
+  .postcard-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nav-buttons {
+    width: 100%;
+  }
+
+  .nav-buttons button {
+    flex: 1;
+  }
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid #818cf8;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

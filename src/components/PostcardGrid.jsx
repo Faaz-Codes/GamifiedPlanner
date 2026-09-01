@@ -38,8 +38,6 @@ function PostcardGrid({ postcards, highlightedPostcardId }) {
                   const row = Math.floor(index / columns);
                   const column = index % columns;
                   const postcardImage = selected.image ?? selected.imageUrl;
-                  console.log(selected.image);
-
                   return (
                     <span
                       key={index}
