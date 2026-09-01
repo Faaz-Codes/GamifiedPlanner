@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { calculateXP, unlockPostcardPiece, updateStreak, XP_PER_LEVEL } from './lib/planner';
 import Dashboard from './components/Dashboard';
 import TaskManager from './components/TaskManager';
 import PostcardCard from './components/PostcardCard';
@@ -10,8 +11,6 @@ import venom from './assets/postcards/venom.svg';
 import redbatman from './assets/postcards/redbatman.svg';
 
 const STORAGE_KEY = 'gamifiedPlannerData';
-const MS_IN_DAY = 1000 * 60 * 60 * 24;
-const XP_PER_LEVEL = 100;
 
 const DEFAULT_POSTCARDS = [
   {
@@ -49,16 +48,21 @@ const DEFAULT_POSTCARDS = [
 ];
 
 const mergePostcardImages = (savedPostcards) => {
-  if (!Array.isArray(savedPostcards) || !savedPostcards.length) return DEFAULT_POSTCARDS;
-
-  return savedPostcards.map((postcard, index) => {
-    const defaultPostcard =
-      DEFAULT_POSTCARDS.find((item) => item.id === postcard.id || item.title === postcard.title) ||
-      DEFAULT_POSTCARDS[index];
+  return DEFAULT_POSTCARDS.map((defaultPostcard) => {
+    const savedPostcard = Array.isArray(savedPostcards)
+      ? savedPostcards.find(
+          (postcard) => postcard?.id === defaultPostcard.id || postcard?.title === defaultPostcard.title
+        )
+      : null;
+    const unlockedPieces = Math.min(
+      defaultPostcard.totalPieces,
+      Math.max(0, Number.isInteger(savedPostcard?.unlockedPieces) ? savedPostcard.unlockedPieces : 0)
+    );
 
     return {
-      ...postcard,
-      image: defaultPostcard?.image ?? postcard.image
+      ...defaultPostcard,
+      unlockedPieces,
+      completed: unlockedPieces === defaultPostcard.totalPieces
     };
   });
 };
@@ -66,87 +70,36 @@ const mergePostcardImages = (savedPostcards) => {
 const getSavedData = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
   } catch {
     return {};
   }
 };
 
-const calculateXP = (difficulty) => {
-  if (difficulty === 'easy') return 10;
-  if (difficulty === 'medium') return 20;
-  return 30;
-};
-
-const normalizeDate = (date) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-const updateStreak = (lastCompletedDate, completionDate) => {
-  if (!lastCompletedDate) {
-    return { streak: 1, unlockedToday: true, saveDate: true };
-  }
-
-  const prev = normalizeDate(lastCompletedDate);
-  const next = normalizeDate(completionDate);
-  const daysDiff = Math.floor((next - prev) / MS_IN_DAY);
-
-  if (daysDiff === 0) {
-    return { streak: null, unlockedToday: false, saveDate: false };
-  }
-
-  if (daysDiff === 1) {
-    return { streak: 'increment', unlockedToday: true, saveDate: true };
-  }
-
-  if (daysDiff > 1) {
-    return { streak: 1, unlockedToday: true, saveDate: true };
-  }
-
-  return { streak: null, unlockedToday: false, saveDate: false };
-};
-
-const unlockPostcardPiece = (postcards) => {
-  const next = postcards.map((postcard) => ({ ...postcard }));
-  const target = next.find((item) => !item.completed && item.unlockedPieces < item.totalPieces);
-
-  if (!target) {
-    return { postcards: next, unlockedCardId: null, pieceUnlocked: false };
-  }
-
-  target.unlockedPieces += 1;
-  target.completed = target.unlockedPieces >= target.totalPieces;
-
-  return {
-    postcards: next,
-    unlockedCardId: target.id,
-    pieceUnlocked: true
-  };
-};
-
 function App() {
+  const [savedData] = useState(getSavedData);
   const [tasks, setTasks] = useState(() => {
-    const saved = getSavedData();
-    return Array.isArray(saved.tasks) ? saved.tasks.map((task) => ({ ...task, isDeleting: false })) : [];
+    if (!Array.isArray(savedData.tasks)) return [];
+    return savedData.tasks
+      .filter((task) => typeof task?.id === 'string' && typeof task.title === 'string' && task.title.trim())
+      .map((task) => ({
+        id: task.id,
+        title: task.title.trim().slice(0, 160),
+        difficulty: ['easy', 'medium', 'hard'].includes(task.difficulty) ? task.difficulty : 'easy',
+        completed: false,
+        isDeleting: false
+      }));
   });
-  const [xp, setXp] = useState(() => {
-    const saved = getSavedData();
-    return saved.xp ?? 0;
-  });
-  const [streak, setStreak] = useState(() => {
-    const saved = getSavedData();
-    return saved.streak ?? 0;
-  });
-  const [postcards, setPostcards] = useState(() => {
-    const saved = getSavedData();
-    return mergePostcardImages(saved.postcards);
-  });
-  const [lastCompletedDate, setLastCompletedDate] = useState(() => {
-    const saved = getSavedData();
-    return saved.lastCompletedDate ?? null;
-  });
+  const [xp, setXp] = useState(() => (Number.isFinite(savedData.xp) && savedData.xp >= 0 ? savedData.xp : 0));
+  const [streak, setStreak] = useState(() =>
+    Number.isInteger(savedData.streak) && savedData.streak >= 0 ? savedData.streak : 0
+  );
+  const [postcards, setPostcards] = useState(() => mergePostcardImages(savedData.postcards));
+  const [lastCompletedDate, setLastCompletedDate] = useState(() =>
+    typeof savedData.lastCompletedDate === 'string' ? savedData.lastCompletedDate : null
+  );
+  const lastCompletedDateRef = useRef(lastCompletedDate);
   const [xpPopup, setXpPopup] = useState(null);
   const [highlightedPostcardId, setHighlightedPostcardId] = useState(null);
   const [page, setPage] = useState('tasks');
@@ -161,7 +114,11 @@ function App() {
       lastCompletedDate
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // Keep the current session usable when storage is unavailable or full.
+    }
   }, [tasks, xp, streak, postcards, lastCompletedDate]);
 
   useEffect(() => {
@@ -181,7 +138,7 @@ function App() {
 
   const addTask = (title, difficulty) => {
     const task = {
-      id: crypto.randomUUID(),
+      id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title,
       difficulty,
       completed: false,
@@ -197,7 +154,7 @@ function App() {
 
     const gainedXP = calculateXP(task.difficulty);
     const nowIso = new Date().toISOString();
-    const streakResult = updateStreak(lastCompletedDate, nowIso);
+    const streakResult = updateStreak(lastCompletedDateRef.current, nowIso);
 
     setXp((prev) => prev + gainedXP);
 
@@ -208,13 +165,16 @@ function App() {
     }
 
     if (streakResult.saveDate) {
+      lastCompletedDateRef.current = nowIso;
       setLastCompletedDate(nowIso);
     }
 
     if (streakResult.unlockedToday) {
-      const unlockResult = unlockPostcardPiece(postcards);
-      setPostcards(unlockResult.postcards);
-      if (unlockResult.unlockedCardId) setHighlightedPostcardId(unlockResult.unlockedCardId);
+      setPostcards((previousPostcards) => {
+        const unlockResult = unlockPostcardPiece(previousPostcards);
+        if (unlockResult.unlockedCardId) setHighlightedPostcardId(unlockResult.unlockedCardId);
+        return unlockResult.postcards;
+      });
     }
 
     setXpPopup(`+${gainedXP} XP`);
@@ -272,7 +232,6 @@ function App() {
                   <PostcardCard
                     postcard={activePostcard}
                     highlighted={highlightedPostcardId === activePostcard.id}
-                    showLarge
                   />
                 </div>
               ) : (

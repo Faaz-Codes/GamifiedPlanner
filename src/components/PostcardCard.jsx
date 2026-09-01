@@ -4,14 +4,12 @@ function PostcardCard({ postcard, onOpen, highlighted = false }) {
   const rows = Math.ceil(postcard.totalPieces / columns);
   const postcardImage = postcard.image ?? postcard.imageUrl;
 
-  console.log(postcard.image);
-
   const handleOpen = () => {
     if (onOpen) onOpen(postcard);
   };
 
-  return (
-    <button className={`postcard-card ${highlighted ? 'highlight' : ''}`} onClick={handleOpen} type="button">
+  const content = (
+    <>
       <div className="postcard-image-grid" style={{ '--columns': columns, '--rows': rows }}>
         {Array.from({ length: postcard.totalPieces }).map((_, index) => {
           const revealed = index < postcard.unlockedPieces;
@@ -35,8 +33,18 @@ function PostcardCard({ postcard, onOpen, highlighted = false }) {
         <h3 className="postcard-title">{postcard.title}</h3>
         <p className="postcard-subtext">{progress}</p>
       </div>
-    </button>
+    </>
   );
+
+  if (onOpen) {
+    return (
+      <button className={`postcard-card ${highlighted ? 'highlight' : ''}`} onClick={handleOpen} type="button">
+        {content}
+      </button>
+    );
+  }
+
+  return <article className={`postcard-card ${highlighted ? 'highlight' : ''}`}>{content}</article>;
 }
 
 export default PostcardCard;

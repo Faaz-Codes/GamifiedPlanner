@@ -25,8 +25,11 @@ function TaskManager({ tasks, onAddTask, onCompleteTask }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add a study task"
+          aria-label="Task title"
+          maxLength={160}
+          required
         />
-        <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+        <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} aria-label="Task difficulty">
           <option value="easy">Easy</option>
           <option value="medium">Medium</option>
           <option value="hard">Hard</option>
