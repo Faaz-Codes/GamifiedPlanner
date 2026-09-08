@@ -1,260 +1,67 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { calculateXP, unlockPostcardPiece, updateStreak, XP_PER_LEVEL } from './lib/planner';
-import Dashboard from './components/Dashboard';
-import TaskManager from './components/TaskManager';
-import PostcardCard from './components/PostcardCard';
-import CollectionPage from './components/CollectionPage';
-import Pomodoro from './components/Pomodoro';
-import spiderman from './assets/postcards/spiderman.svg';
-import batman from './assets/postcards/batman.svg';
-import venom from './assets/postcards/venom.svg';
-import redbatman from './assets/postcards/redbatman.svg';
+import { useEffect, useMemo, useState } from 'react';
+import { hasSupabase, plannerApi } from './lib/supabase';
 
-const STORAGE_KEY = 'gamifiedPlannerData';
-
-const DEFAULT_POSTCARDS = [
-  {
-    id: 1,
-    title: 'Spider-Man',
-    image: spiderman,
-    totalPieces: 8,
-    unlockedPieces: 0,
-    completed: false
-  },
-  {
-    id: 2,
-    title: 'Batman',
-    image: batman,
-    totalPieces: 8,
-    unlockedPieces: 0,
-    completed: false
-  },
-  {
-    id: 3,
-    title: 'Venom',
-    image: venom,
-    totalPieces: 8,
-    unlockedPieces: 0,
-    completed: false
-  },
-  {
-    id: 4,
-    title: 'Red Batman',
-    image: redbatman,
-    totalPieces: 8,
-    unlockedPieces: 0,
-    completed: false
-  }
+const uid = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+const today = new Date().toISOString().slice(0, 10);
+const DEMO_TASKS = [
+  { id:'t1', title:'SQL normalization practice', subject:'Databases', difficulty:'hard', priority:'high', due_date:today, estimated_minutes:45, status:'pending' },
+  { id:'t2', title:'Review compiler lecture 06', subject:'Compilers', difficulty:'medium', priority:'high', due_date:today, estimated_minutes:25, status:'pending' },
+  { id:'t3', title:'Read DBMS chapter four', subject:'Databases', difficulty:'easy', priority:'medium', due_date:today, estimated_minutes:30, status:'pending' },
+  { id:'t4', title:'LeetCode warm-up', subject:'Algorithms', difficulty:'medium', priority:'low', due_date:today, estimated_minutes:20, status:'completed', completed_at:new Date().toISOString() }
 ];
-
-const mergePostcardImages = (savedPostcards) => {
-  return DEFAULT_POSTCARDS.map((defaultPostcard) => {
-    const savedPostcard = Array.isArray(savedPostcards)
-      ? savedPostcards.find(
-          (postcard) => postcard?.id === defaultPostcard.id || postcard?.title === defaultPostcard.title
-        )
-      : null;
-    const unlockedPieces = Math.min(
-      defaultPostcard.totalPieces,
-      Math.max(0, Number.isInteger(savedPostcard?.unlockedPieces) ? savedPostcard.unlockedPieces : 0)
-    );
-
-    return {
-      ...defaultPostcard,
-      unlockedPieces,
-      completed: unlockedPieces === defaultPostcard.totalPieces
-    };
-  });
-};
-
-const getSavedData = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-};
+const catalog = [
+  {name:'First Step', icon:'🏁', rule:'Complete your first task.', value:1}, {name:'3 Day Warrior', icon:'🔥', rule:'Keep a 3-day streak.', value:3}, {name:'Week Warrior', icon:'🔥', rule:'Keep a 7-day streak.', value:7}, {name:'Bookworm', icon:'📚', rule:'Complete 50 tasks.', value:50}, {name:'Focused',icon:'⏱',rule:'Finish 10 focus sessions.',value:10}, {name:'Centurion', icon:'💯',rule:'Earn 1,000 XP.',value:1000}
+];
+const postcards = [{name:'Night Library', rarity:'Rare', pieces:6, total:8, tone:'library'}, {name:'Amber Observatory', rarity:'Epic', pieces:2, total:8, tone:'observatory'}, {name:'Moss & Margins', rarity:'Common', pieces:8, total:8, tone:'moss'}];
+const xpFor = (difficulty) => ({ easy:10, medium:20, hard:30 }[difficulty] ?? 10);
+const levelFor = (xp) => Math.floor(Math.sqrt(xp / 100)) + 1;
+const xpFloor = (level) => (level - 1) ** 2 * 100;
 
 function App() {
-  const [savedData] = useState(getSavedData);
-  const [tasks, setTasks] = useState(() => {
-    if (!Array.isArray(savedData.tasks)) return [];
-    return savedData.tasks
-      .filter((task) => typeof task?.id === 'string' && typeof task.title === 'string' && task.title.trim())
-      .map((task) => ({
-        id: task.id,
-        title: task.title.trim().slice(0, 160),
-        difficulty: ['easy', 'medium', 'hard'].includes(task.difficulty) ? task.difficulty : 'easy',
-        completed: false,
-        isDeleting: false
-      }));
-  });
-  const [xp, setXp] = useState(() => (Number.isFinite(savedData.xp) && savedData.xp >= 0 ? savedData.xp : 0));
-  const [streak, setStreak] = useState(() =>
-    Number.isInteger(savedData.streak) && savedData.streak >= 0 ? savedData.streak : 0
-  );
-  const [postcards, setPostcards] = useState(() => mergePostcardImages(savedData.postcards));
-  const [lastCompletedDate, setLastCompletedDate] = useState(() =>
-    typeof savedData.lastCompletedDate === 'string' ? savedData.lastCompletedDate : null
-  );
-  const lastCompletedDateRef = useRef(lastCompletedDate);
-  const [xpPopup, setXpPopup] = useState(null);
-  const [highlightedPostcardId, setHighlightedPostcardId] = useState(null);
-  const [page, setPage] = useState('tasks');
-  const activePostcard = useMemo(() => postcards.find((postcard) => !postcard.completed), [postcards]);
+  const [demo, setDemo] = useState(true);
+  const [page, setPage] = useState('dashboard');
+  const [tasks, setTasks] = useState(DEMO_TASKS);
+  const [xp, setXp] = useState(1240);
+  const [streak, setStreak] = useState(18);
+  const [pomodoros, setPomodoros] = useState(38);
+  const [focusMinutes, setFocusMinutes] = useState(1140);
+  const [toast, setToast] = useState(null);
+  const [filter, setFilter] = useState('active');
+  const [query, setQuery] = useState('');
+  const [timer, setTimer] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [theme, setTheme] = useState('night');
+  const completed = tasks.filter(t => t.status === 'completed');
+  const visibleTasks = tasks.filter(t => (filter === 'all' || filter === 'active' && t.status === 'pending' || filter === 'completed' && t.status === 'completed' || filter === 'high' && t.priority === 'high') && `${t.title} ${t.subject}`.toLowerCase().includes(query.toLowerCase()));
+  const level = levelFor(xp), base = xpFloor(level), next = xpFloor(level + 1), levelProgress = Math.min(100, ((xp - base) / (next - base)) * 100);
+  useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(null), 5000); return () => clearTimeout(id); }, [toast]);
+  useEffect(() => { if (!timer?.running) return; const id = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(id); }, [timer?.running]);
+  const remaining = timer ? Math.max(0, timer.endsAt - now) : 25 * 60_000;
+  useEffect(() => { if (timer?.running && remaining === 0) finishFocus(); }, [remaining]);
 
-  useEffect(() => {
-    const data = {
-      tasks,
-      xp,
-      streak,
-      postcards,
-      lastCompletedDate
-    };
-
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {
-      // Keep the current session usable when storage is unavailable or full.
-    }
-  }, [tasks, xp, streak, postcards, lastCompletedDate]);
-
-  useEffect(() => {
-    if (!xpPopup) return;
-    const timeout = setTimeout(() => setXpPopup(null), 1600);
-    return () => clearTimeout(timeout);
-  }, [xpPopup]);
-
-  useEffect(() => {
-    if (!highlightedPostcardId) return;
-    const timeout = setTimeout(() => setHighlightedPostcardId(null), 1800);
-    return () => clearTimeout(timeout);
-  }, [highlightedPostcardId]);
-
-  const level = useMemo(() => Math.floor(xp / XP_PER_LEVEL) + 1, [xp]);
-  const xpProgress = useMemo(() => xp % XP_PER_LEVEL, [xp]);
-
-  const addTask = (title, difficulty) => {
-    const task = {
-      id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      title,
-      difficulty,
-      completed: false,
-      isDeleting: false
-    };
-
-    setTasks((prev) => [task, ...prev]);
-  };
-
-  const completeTask = (taskId) => {
-    const task = tasks.find((item) => item.id === taskId);
-    if (!task || task.completed || task.isDeleting) return;
-
-    const gainedXP = calculateXP(task.difficulty);
-    const nowIso = new Date().toISOString();
-    const streakResult = updateStreak(lastCompletedDateRef.current, nowIso);
-
-    setXp((prev) => prev + gainedXP);
-
-    if (streakResult.streak === 1) {
-      setStreak(1);
-    } else if (streakResult.streak === 'increment') {
-      setStreak((prev) => prev + 1);
-    }
-
-    if (streakResult.saveDate) {
-      lastCompletedDateRef.current = nowIso;
-      setLastCompletedDate(nowIso);
-    }
-
-    if (streakResult.unlockedToday) {
-      setPostcards((previousPostcards) => {
-        const unlockResult = unlockPostcardPiece(previousPostcards);
-        if (unlockResult.unlockedCardId) setHighlightedPostcardId(unlockResult.unlockedCardId);
-        return unlockResult.postcards;
-      });
-    }
-
-    setXpPopup(`+${gainedXP} XP`);
-
-    setTasks((prev) =>
-      prev.map((item) =>
-        item.id === taskId
-          ? {
-              ...item,
-              completed: true,
-              isDeleting: true
-            }
-          : item
-      )
-    );
-
-    setTimeout(() => {
-      setTasks((prev) => prev.filter((savedTask) => savedTask.id !== taskId));
-    }, 300);
-  };
-
-  return (
-    <div className="container">
-      <header className="hero">
-        <div className="header">
-          <h1>Gamified Study Planner</h1>
-          <div className="nav-buttons">
-            <button className={page === 'tasks' ? 'active' : ''} onClick={() => setPage('tasks')} type="button">
-              Tasks
-            </button>
-            <button className={page === 'pomodoro' ? 'active' : ''} onClick={() => setPage('pomodoro')} type="button">
-              Pomodoro
-            </button>
-          </div>
-        </div>
-        <p>Build momentum daily. Earn XP, keep your streak, and reveal postcards one piece at a time.</p>
-      </header>
-
-      {page === 'tasks' && (
-        <>
-          <Dashboard xp={xp} level={level} streak={streak} xpProgress={xpProgress} />
-
-          <main className="main-content">
-            <TaskManager tasks={tasks} onAddTask={addTask} onCompleteTask={completeTask} />
-            <section className="card panel postcard-section">
-              <div className="postcard-header">
-                <h2>Postcards</h2>
-                <button onClick={() => setPage('collection')} type="button">
-                  View Collection
-                </button>
-              </div>
-
-              {activePostcard ? (
-                <div className="postcard-active">
-                  <PostcardCard
-                    postcard={activePostcard}
-                    highlighted={highlightedPostcardId === activePostcard.id}
-                  />
-                </div>
-              ) : (
-                <p className="empty-state">You have completed all postcards. Amazing consistency!</p>
-              )}
-            </section>
-          </main>
-        </>
-      )}
-
-      {page === 'collection' && (
-        <CollectionPage
-          postcards={postcards}
-          onBack={() => setPage('tasks')}
-          highlightedPostcardId={highlightedPostcardId}
-        />
-      )}
-
-      {page === 'pomodoro' && <Pomodoro onBack={() => setPage('tasks')} />}
-
-      {xpPopup && <div className="xp-popup">{xpPopup}</div>}
-    </div>
-  );
+  const addTask = async (event) => { event.preventDefault(); const fd = new FormData(event.currentTarget); const title = String(fd.get('title')).trim(); if (!title) return; const task = { id:uid(), title, subject:String(fd.get('subject') || 'General'), difficulty:String(fd.get('difficulty') || 'easy'), priority:String(fd.get('priority') || 'medium'), due_date:today, estimated_minutes:Number(fd.get('minutes') || 25), status:'pending' }; setTasks(prev => [task,...prev]); event.currentTarget.reset(); setToast({title:'Task queued', text:'Your study map has a new pin.'}); if (!demo) try { await plannerApi.createTask(task); } catch (error) { setToast({title:'Could not save task',text:error.message,kind:'error'}); } };
+  const completeTask = async (task) => { if (task.status === 'completed') return; const amount = xpFor(task.difficulty); setTasks(prev => prev.map(t => t.id === task.id ? {...t,status:'completed',completed_at:new Date().toISOString()} : t)); setXp(v => v + amount); setToast({title:'Task complete', text:`+${amount} XP · ${task.difficulty} mission`, undo:() => undoTask(task,amount)}); if (!demo) try { await plannerApi.completeTask(task.id); } catch (error) { setToast({title:'Could not complete task', text:error.message,kind:'error'}); } };
+  const undoTask = (task, amount) => { setTasks(prev => prev.map(t => t.id === task.id ? {...t,status:'pending',completed_at:null} : t)); setXp(v => Math.max(0,v-amount)); setToast({title:'Completion rewound',text:'The XP ledger was reversed.'}); };
+  const startFocus = (task) => { const minutes = 25; setTimer({task, startedAt:Date.now(), endsAt:Date.now()+minutes*60_000, running:true, duration:minutes}); setPage('focus'); };
+  const finishFocus = async () => { if (!timer) return; setTimer(null); setPomodoros(v => v+1); setFocusMinutes(v => v+(timer.duration || 25)); setXp(v => v+15); setToast({title:'Focus session sealed', text:'+15 XP · one more page in your story'}); if (!demo) try { await plannerApi.completePomodoro(timer.task?.id, new Date(timer.startedAt).toISOString(), timer.duration); } catch (error) { setToast({title:'Session needs syncing',text:error.message,kind:'error'}); } };
+  const nav = [['dashboard','⌂','Today'],['tasks','✓','Tasks'],['focus','◷','Focus'],['calendar','▦','Calendar'],['collection','✦','Collection'],['stats','⌁','Stats'],['settings','⚙','Settings']];
+  return <div className={`app theme-${theme}`}>
+    <aside className="rail"><div className="monogram">GP<span>2</span></div><nav>{nav.map(([id,icon,label])=><button key={id} className={page===id?'selected':''} onClick={()=>setPage(id)}><i>{icon}</i><span>{label}</span></button>)}</nav><div className="rail-bottom"><button onClick={()=>setDemo(!demo)} className="demo-switch">{demo?'DEMO MODE':'LIVE MODE'}</button><button onClick={()=>setPage('settings')} className="avatar" aria-label="Open profile">LM</button></div></aside>
+    <main><header className="topbar"><div><p className="eyebrow">{demo ? 'SANDBOX / YOUR PRIVATE STUDY ROOM' : hasSupabase ? 'CONNECTED / YOUR STUDY ROOM' : 'OFFLINE / ADD SUPABASE KEYS'}</p><h1>{page === 'dashboard' ? 'Good morning, Lena.' : page[0].toUpperCase()+page.slice(1)}</h1></div><div className="header-stats"><span>🔥 {streak} day flame</span><b>✦ {xp.toLocaleString()} XP</b></div></header>
+    {page==='dashboard' && <Dashboard tasks={tasks} completed={completed} xp={xp} level={level} progress={levelProgress} streak={streak} focusMinutes={focusMinutes} onComplete={completeTask} onFocus={startFocus}/>}
+    {page==='tasks' && <Tasks tasks={visibleTasks} query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} addTask={addTask} complete={completeTask} startFocus={startFocus}/>}
+    {page==='focus' && <Focus timer={timer} remaining={remaining} onStart={()=>startFocus(tasks.find(t=>t.status==='pending'))} onPause={()=>setTimer(t=>t&&({...t,running:!t.running,endsAt:Date.now()+remaining}))} onFinish={finishFocus}/>}
+    {page==='calendar' && <Calendar tasks={tasks} />} {page==='collection' && <Collection />} {page==='stats' && <Stats xp={xp} tasks={completed.length} pomodoros={pomodoros} focus={focusMinutes} streak={streak}/>} {page==='settings' && <Settings theme={theme} setTheme={setTheme} />}
+    </main>{toast && <div className={`toast ${toast.kind||''}`}><div><strong>{toast.title}</strong><p>{toast.text}</p></div>{toast.undo && <button onClick={toast.undo}>Undo</button>}<button aria-label="Dismiss notification" onClick={()=>setToast(null)}>×</button></div>}</div>;
 }
-
+function Dashboard({tasks,completed,xp,level,progress,streak,focusMinutes,onComplete,onFocus}) { const active=tasks.filter(t=>t.status==='pending').slice(0,3); return <div className="page-grid"><section className="hero-card"><div className="stamp">LEVEL {level}</div><h2>Make a little progress<br/>look like a grand expedition.</h2><div className="level-track"><span style={{width:`${progress}%`}}/></div><p>{Math.round(progress)}% through this level · {xp.toLocaleString()} XP banked</p><div className="hero-orbit">✦</div></section><section className="metric-board"><div><span>Today’s quests</span><b>{completed.length} / {tasks.length}</b><small>missions sealed</small></div><div><span>Deep work</span><b>{Math.floor(focusMinutes/60)}h {focusMinutes%60}m</b><small>time protected</small></div><div><span>Streak</span><b>🔥 {streak}</b><small>best: 27 days</small></div></section><section className="paper-card quest-list"><header><div><p className="eyebrow">TODAY’S ITINERARY</p><h2>Pick your next thread.</h2></div><button className="text-button">View all →</button></header>{active.map(t=><TaskRow key={t.id} task={t} onComplete={()=>onComplete(t)} onFocus={()=>onFocus(t)}/>) }<button className="dashed">+ Add a spontaneous task</button></section><section className="paper-card goals"><p className="eyebrow">DAILY RITUALS</p><h2>Two more, then the day is yours.</h2><Goal done label="Complete 3 tasks" detail={`${completed.length} of 3`}/><Goal label="Focus for 60 minutes" detail={`${focusMinutes%60} of 60 min`}/><Goal label="Keep the flame" detail="after first task"/></section><section className="postcard-feature"><div className="postcard-art"><span>Night<br/>Library</span></div><div><p className="eyebrow">POSTCARD IN PROGRESS</p><h2>Night Library</h2><div className="piece-track"><span style={{width:'75%'}}/></div><p>6 of 8 fragments found. Complete a quest tomorrow to uncover another.</p><button className="dark-button">Visit collection</button></div></section></div> }
+function TaskRow({task,onComplete,onFocus}) { return <article className={`task-row priority-${task.priority}`}><button className="checkbox" aria-label={`Complete ${task.title}`} onClick={onComplete}/><div><strong>{task.title}</strong><p>{task.subject} · {task.estimated_minutes} min · <em>{task.difficulty}</em></p></div><button className="focus-button" onClick={onFocus}>Focus ↗</button></article> }
+function Goal({done,label,detail}) { return <div className={`goal ${done?'done':''}`}><span>{done?'✓':'○'}</span><div><strong>{label}</strong><small>{detail}</small></div></div> }
+function Tasks({tasks,query,setQuery,filter,setFilter,addTask,complete,startFocus}) { return <section className="task-page"><form className="quick-add" onSubmit={addTask}><input name="title" placeholder="Write a new quest…" maxLength="160"/><select name="difficulty" aria-label="Difficulty"><option value="easy">Easy +10</option><option value="medium">Medium +20</option><option value="hard">Hard +30</option></select><select name="priority" aria-label="Priority"><option value="medium">Medium priority</option><option value="high">High priority</option><option value="low">Low priority</option></select><input name="subject" placeholder="Subject"/><input name="minutes" type="number" min="1" placeholder="Min"/><button>+ Add</button></form><div className="task-toolbar"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="⌕ Search tasks, subjects, notes…"/><div>{['active','all','completed','high'].map(x=><button className={filter===x?'active-filter':''} onClick={()=>setFilter(x)} key={x}>{x}</button>)}</div></div><section className="paper-card task-catalog"><header><div><p className="eyebrow">MISSION CONTROL</p><h2>{filter === 'completed' ? 'Archive' : 'Your open loops'}</h2></div><span>{tasks.length} found</span></header>{tasks.length ? tasks.map(t=><TaskRow key={t.id} task={t} onComplete={()=>complete(t)} onFocus={()=>startFocus(t)}/>) : <div className="empty"><b>No matching quests.</b><p>Start small: capture the next useful thing.</p></div>}</section></section> }
+function Focus({timer,remaining,onStart,onPause,onFinish}) { const sec=Math.ceil(remaining/1000), value=`${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`; return <section className="focus-room"><div className="focus-corner">{timer?.task?.subject || 'FOCUS ROOM'}<br/><small>one tab · one purpose</small></div><div className="timer-dial"><div><p>{timer?.running?'FOCUSING ON':'READY WHEN YOU ARE'}</p><h2>{timer?.task?.title || 'Choose one meaningful task'}</h2><strong>{value}</strong><span>25 minute study block</span><div className="timer-actions">{timer?<><button onClick={onPause}>{timer.running?'Pause':'Resume'}</button><button className="outline" onClick={onFinish}>Finish early</button></>:<button onClick={onStart}>Begin focus</button>}</div></div></div><p className="focus-note">The timer follows timestamps, not fragile second-by-second countdowns.</p></section> }
+function Calendar({tasks}) { const days=Array.from({length:35},(_,i)=>i-1), date=new Date(); return <section className="calendar-page paper-card"><header><div><p className="eyebrow">ACTIVITY ATLAS</p><h2>September 2026</h2></div><div><button>←</button><button>Today</button><button>→</button></div></header><div className="weekdays">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=><span key={d}>{d}</span>)}</div><div className="calendar-grid">{days.map((day,i)=><button key={i} className={day===8?'today':day>0&&day<20&&day%3?'active-day':''}>{day>0&&day<31?<><b>{day}</b>{day===8&&<small>3 quests</small>}</>:null}</button>)}</div><aside><h3>Tuesday, September 8</h3>{tasks.filter(t=>t.due_date===today).map(t=><p key={t.id}>{t.status==='completed'?'✓':'○'} {t.title}</p>)}<hr/><p><b>XP earned:</b> 60</p><p><b>Focus time:</b> 1h 15m</p></aside></section> }
+function Collection() { return <section className="collection-page"><header><p className="eyebrow">THE CABINET OF SMALL WONDERS</p><h2>Collected places</h2><p>Every consistent day leaves you with something to keep.</p></header><div className="collection-grid">{postcards.map(c=><article className={`collection-card ${c.tone}`} key={c.name}><div className="collection-art"><span>{c.name}</span></div><div><small>{c.rarity.toUpperCase()}</small><h3>{c.name}</h3><div className="piece-track"><span style={{width:`${c.pieces/c.total*100}%`}}/></div><p>{c.pieces} / {c.total} fragments</p></div></article>)}</div></section> }
+function Stats({xp,tasks,pomodoros,focus,streak}) { return <section className="stats-page"><div className="stats-hero"><p className="eyebrow">YOUR PRODUCTIVITY, UNFOLDED</p><h2>Small rituals. Visible momentum.</h2><div className="stat-cells"><Metric value={xp.toLocaleString()} label="total XP"/><Metric value={tasks} label="tasks complete"/><Metric value={pomodoros} label="pomodoros"/><Metric value={`${Math.floor(focus/60)}h`} label="hours focused"/><Metric value={`${streak}d`} label="current streak"/></div></div><section className="paper-card chart-card"><header><h2>Seven-day signal</h2><span>XP earned</span></header><div className="bars">{[35,48,23,67,44,88,59].map((n,i)=><div key={i}><i style={{height:`${n}%`}}/><small>{['M','T','W','T','F','S','S'][i]}</small></div>)}</div></section><section className="paper-card subject-card"><h2>Study terrain</h2><p>Based on completed task records, not invented estimates.</p>{[['Databases',52],['Compilers',28],['Algorithms',20]].map(([name,n])=><div className="subject" key={name}><span>{name}</span><div><i style={{width:`${n}%`}}/></div><b>{n}%</b></div>)}</section></section> }
+function Metric({value,label}) { return <div><b>{value}</b><span>{label}</span></div> }
+function Settings({theme,setTheme}) { return <section className="settings-page"><div><p className="eyebrow">MAKE THE ROOM YOURS</p><h2>Settings</h2></div><section className="paper-card"><h3>Appearance</h3><p>Theme choices are centralized through design tokens and persist with your profile when connected.</p><div className="theme-choices">{[['night','Ink & Apricot'],['moss','Moss & Paper'],['sun','Sunlit Index']].map(([id,label])=><button key={id} className={theme===id?'chosen':''} onClick={()=>setTheme(id)}><i/><span>{label}</span></button>)}</div></section><section className="paper-card"><h3>Focus rituals</h3><div className="settings-grid"><label>Focus duration<input value="25 min" readOnly/></label><label>Short break<input value="5 min" readOnly/></label><label>Long break<input value="15 min" readOnly/></label><label>Sessions before long break<input value="4" readOnly/></label></div></section><section className="paper-card"><h3>Your data</h3><p>Export and import are available after connecting Supabase. Destructive account actions always require confirmation.</p><button className="dark-button" disabled={!hasSupabase}>Export my data</button></section></section> }
 export default App;
