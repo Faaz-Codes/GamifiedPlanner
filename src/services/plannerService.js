@@ -1,0 +1,44 @@
+import { readAll, transaction, write, replaceAll, STORE_NAMES } from '../db/database';
+
+const id = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+export const dateKey = (date = new Date()) => new Date(date).toLocaleDateString('en-CA');
+export const xpFor = (difficulty) => ({ easy: 10, medium: 20, hard: 30 }[difficulty] || 10);
+export const levelFor = (xp) => Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1;
+const now = () => new Date().toISOString();
+const catalogues = {
+  achievements: [
+    ['first-step', '🏁 First Step', 'Complete your first task.', 'tasks', 1, 25], ['three-day', '🔥 3 Day Warrior', 'Maintain a 3-day streak.', 'streak', 3, 50], ['week-warrior', '🔥 Week Warrior', 'Maintain a 7-day streak.', 'streak', 7, 75], ['month-machine', '🔥 Month Machine', 'Maintain a 30-day streak.', 'streak', 30, 150], ['bookworm', '📚 Bookworm', 'Complete 50 tasks.', 'tasks', 50, 100], ['focused', '⏱️ Focused', 'Complete 10 Pomodoro sessions.', 'pomodoros', 10, 75], ['centurion', '💯 Centurion', 'Earn 1,000 XP.', 'xp', 1000, 100], ['collector', '🃏 Collector', 'Complete your first postcard.', 'postcards', 1, 100], ['gallery-owner', '🃏 Gallery Owner', 'Complete every postcard.', 'gallery', 1, 200]
+  ].map(([id, name, description, metric, target, reward]) => ({ id, name, description, metric, target, reward })),
+  shop_items: [['freeze', 'Streak Freeze', 500], ['theme', 'New Theme', 1000], ['postcard', 'Special Postcard', 1500], ['booster', '2× XP Booster', 750], ['badge', 'Custom Profile Badge', 1000]].map(([id, name, price]) => ({ id, name, price, active: true })),
+  postcards: [['night-library', 'Night Library', 'Rare', 8], ['amber-observatory', 'Amber Observatory', 'Epic', 8], ['moss-margins', 'Moss & Margins', 'Common', 8]].map(([id, name, rarity, totalPieces]) => ({ id, name, rarity, totalPieces, description: 'A local collection reward.' })),
+  themes: ['default', 'midnight', 'forest', 'cyber', 'cafe', 'space'].map((id) => ({ id, name: id, locked: !['default', 'midnight', 'forest'].includes(id) }))
+};
+export async function initialize() {
+  const profiles = await readAll('profiles');
+  if (!profiles.length) await transaction(['profiles', 'settings', ...Object.keys(catalogues)], 'readwrite', (s) => {
+    s.profiles.put({ id: 'local-profile', username: 'Scholar', avatar: '🎓', level: 1, totalXP: 0, currentStreak: 0, longestStreak: 0, activeTheme: 'midnight', customBadge: '', createdAt: now() });
+    s.settings.put({ id: 'settings', appearance: 'system', focusMinutes: 25, shortBreak: 5, longBreak: 15, sessionsBeforeLongBreak: 4, onboardingComplete: false, activeTimer: null });
+    Object.entries(catalogues).forEach(([name, rows]) => rows.forEach((row) => s[name].put(row)));
+  });
+  return snapshot();
+}
+export async function snapshot() { const pairs = await Promise.all(STORE_NAMES.map(async (name) => [name, await readAll(name)])); return Object.fromEntries(pairs); }
+async function profile(store) { return new Promise((resolve, reject) => { const r = store.get('local-profile'); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); }
+function award(stores, profileRecord, amount, reason, referenceType, referenceId) {
+  const key = `${referenceType}:${referenceId}:${reason}`;
+  const r = stores.xp_transactions.get(key);
+  r.onsuccess = () => { if (r.result) return; const totalXP = Math.max(0, profileRecord.totalXP + amount); stores.xp_transactions.put({ id: key, amount, reason, referenceType, referenceId, createdAt: now() }); profileRecord.totalXP = totalXP; profileRecord.level = levelFor(totalXP); stores.profiles.put(profileRecord); };
+}
+export async function createTask(fields) { const task = { id: id(), title: fields.title.trim(), description: fields.description || '', subject: fields.subject || 'General', difficulty: fields.difficulty || 'easy', priority: fields.priority || 'medium', status: 'pending', dueDate: fields.dueDate || dateKey(), estimatedMinutes: Number(fields.estimatedMinutes || 25), completedAt: null, sortOrder: Date.now(), recurringTaskId: fields.recurringTaskId || null, createdAt: now(), updatedAt: now() }; if (!task.title) throw new Error('A task needs a title.'); await write('tasks', task); return task; }
+export async function updateTask(id, patch) { await transaction(['tasks'], 'readwrite', (s) => { const r=s.tasks.get(id); r.onsuccess=()=>{ if (!r.result) return; s.tasks.put({ ...r.result, ...patch, updatedAt: now() }); }; }); }
+export async function deleteTask(id) { const task = (await readAll('tasks')).find((item) => item.id === id); if (!task) return null; await transaction(['tasks'], 'readwrite', (s) => s.tasks.delete(id)); return task; }
+export async function restoreTask(task) { await write('tasks', task); }
+export async function completeTask(taskId) { return transaction(['tasks', 'profiles', 'xp_transactions', 'activity_days'], 'readwrite', (s) => { const r=s.tasks.get(taskId); r.onsuccess=async()=>{ const task=r.result; if (!task || task.status === 'completed') return; const completedAt=now(), amount=xpFor(task.difficulty), day=dateKey(completedAt); s.tasks.put({ ...task, status:'completed', completedAt, updatedAt:completedAt }); const p=await profile(s.profiles); award(s,p,amount,'Completed task','task',taskId); const a=s.activity_days.get(day); a.onsuccess=()=>s.activity_days.put({ id:day, date:day, tasksCompleted:(a.result?.tasksCompleted||0)+1, pomodorosCompleted:a.result?.pomodorosCompleted||0, focusMinutes:a.result?.focusMinutes||0, active:true }); }; }); }
+export async function undoCompletion(taskId) { return transaction(['tasks', 'profiles', 'xp_transactions', 'activity_days'], 'readwrite', (s) => { const r=s.tasks.get(taskId); r.onsuccess=async()=>{ const task=r.result; if (!task || task.status !== 'completed') return; const txId=`task:${taskId}:Completed task`; const x=s.xp_transactions.get(txId); x.onsuccess=async()=>{ s.tasks.put({ ...task,status:'pending',completedAt:null,updatedAt:now() }); if (!x.result?.reversed) { const p=await profile(s.profiles); award(s,p,-x.result.amount,'Completion reversed','task-reversal',taskId); s.xp_transactions.put({ ...x.result,reversed:true }); } }; }; }); }
+export async function completePomodoro(timer) { const sessionId=id(); await transaction(['pomodoro_sessions','profiles','xp_transactions','activity_days','settings'], 'readwrite', async(s)=>{ const day=dateKey(); s.pomodoro_sessions.put({id:sessionId, taskId:timer.taskId||null, startedAt:new Date(timer.startedAt).toISOString(), endedAt:now(), durationMinutes:timer.duration, completed:true}); const p=await profile(s.profiles); award(s,p,15,'Pomodoro complete','pomodoro',sessionId); const a=s.activity_days.get(day); a.onsuccess=()=>s.activity_days.put({id:day,date:day,tasksCompleted:a.result?.tasksCompleted||0,pomodorosCompleted:(a.result?.pomodorosCompleted||0)+1,focusMinutes:(a.result?.focusMinutes||0)+timer.duration,active:true}); const settings=s.settings.get('settings'); settings.onsuccess=()=>s.settings.put({...settings.result,activeTimer:null}); }); }
+export async function saveSettings(patch) { await transaction(['settings'], 'readwrite', s=>{const r=s.settings.get('settings');r.onsuccess=()=>s.settings.put({...r.result,...patch});}); }
+export async function updateProfile(patch) { await transaction(['profiles'], 'readwrite', async s=>s.profiles.put({...await profile(s.profiles),...patch})); }
+export async function claimDailyReward() { const day=dateKey(); return transaction(['daily_rewards','profiles','xp_transactions'], 'readwrite', async s=>{const r=s.daily_rewards.get(day); r.onsuccess=async()=>{if(r.result?.claimed)return; s.daily_rewards.put({id:day,rewardDate:day,rewardType:'daily_xp',rewardValue:25,claimed:true,claimedAt:now()}); award(s,await profile(s.profiles),25,'Daily reward','daily-reward',day);};}); }
+export async function purchase(itemId) { return transaction(['shop_items','user_inventory','profiles','xp_transactions'], 'readwrite', async s=>{const r=s.shop_items.get(itemId);r.onsuccess=async()=>{const item=r.result,p=await profile(s.profiles);if(!item)throw new Error('Item unavailable.');if(p.totalXP<item.price)throw new Error('Not enough XP for that item.');const purchaseId=id();award(s,p,-item.price,'Shop purchase','shop',purchaseId);const inv=s.user_inventory.get(itemId);inv.onsuccess=()=>s.user_inventory.put({id:itemId,itemId,quantity:(inv.result?.quantity||0)+1,purchasedAt:now()});};}); }
+export async function exportData() { return JSON.stringify({ version: 1, exportedAt: now(), data: await snapshot() }, null, 2); }
+export async function importData(text) { let parsed; try { parsed=JSON.parse(text); } catch { throw new Error('That file is not valid JSON.'); } if (!parsed?.data || !STORE_NAMES.every((name)=>Array.isArray(parsed.data[name]))) throw new Error('This file is not a complete planner export.'); await replaceAll(parsed.data); }

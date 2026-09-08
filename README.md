@@ -1,42 +1,22 @@
-# Gamified Study Planner V2
+# Gamified Planner — local edition
 
-A Supabase-first study planner where tasks and focus sessions produce an auditable XP ledger, activity days, streaks, goals, and collectable postcard progress. The UI has a deliberately isolated **Demo Mode** for presentations; it never writes demo records to a real account.
+Gamified Planner is a private, offline-first study planner. Tasks, focus sessions, the XP ledger, calendar activity, settings, and catalogue data live in the browser's IndexedDB database. Core features make no network requests and require no account or server.
 
 ## Run locally
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-Without environment variables, the app starts in Demo Mode. To use a real Supabase project, set only these public browser values:
+Run checks with `npm test` and `npm run build`.
 
-```bash
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-project-anon-key
-```
+## Local data
 
-Never expose a Supabase service-role key in Vite variables.
+`src/db/database.js` owns the `gamified-planner-local` IndexedDB database and creates stores for profiles, tasks, recurring tasks, XP transactions, activity days, focus sessions, daily goals, achievements, inventory, postcards, themes, rewards, and settings. Services in `src/services/plannerService.js` own all writes, including the XP ledger and duplicate-reward reference keys.
 
-## Supabase setup
+Use **Settings → Export my data** to download a complete JSON backup. Imports require the complete exported structure and show a browser confirmation before replacing local records. The **Try Demo** control is a visual preview and never writes to the real local database.
 
-1. Create a Supabase project and configure its Auth providers in the Supabase dashboard.
-2. Install the Supabase CLI, link the project, then apply the migration:
-   ```bash
-   supabase db push
-   ```
-3. Add the two variables above to `.env.local` and restart Vite.
+## Limitations and next steps
 
-`supabase/migrations/202609080001_v2_schema.sql` creates profiles, tasks, recurring tasks, the immutable `xp_transactions` ledger, activity days, Pomodoro sessions, deterministic daily goals, achievements, inventory/shop, postcards, themes, and daily rewards. User-owned records are protected by `auth.uid() = user_id` RLS policies. Public catalogues are read-only to clients.
-
-## Game rules
-
-- Easy / medium / hard tasks award 10 / 20 / 30 XP through `complete_task`, which row-locks the task and uses a unique ledger reference to defeat duplicate completion requests.
-- Undo creates a compensating ledger record through `undo_task_completion`; completed task history is retained.
-- Level math lives in `level_for_xp`: `floor(sqrt(total_xp / 100)) + 1`.
-- Activity days are the source for calendar, focus totals, and streak calculations. Focus timers use an end timestamp so throttled tabs do not drift.
-
-## Current integration boundary
-
-The responsive V2 interface, isolated demo sandbox, task CRUD path, task completion/undo RPCs, and the database/RLS foundation are included. Before production launch, add the remaining catalogue seed migration and wire the provided UI controls to authenticated Supabase sessions and the corresponding server-side RPCs (shop/reward/recurrence) after your project’s auth UX is chosen. This protects game economy operations from being client-controlled.
+Data belongs to the current browser profile, so export a backup before clearing browser storage or moving devices. The interface includes the core local task, timer, calendar, stats, theme, and backup flows; additional catalogue progression and recurring-task screens can be expanded without changing the persistence boundary.
